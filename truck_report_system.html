@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Relatórios de Camiões</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='30' width='50' height='25' fill='%234A90E2' rx='3'/><rect x='55' y='20' width='25' height='35' fill='%234A90E2' rx='3'/><circle cx='25' cy='65' r='8' fill='%23333'/><circle cx='70' cy='65' r='8' fill='%23333'/><rect x='15' y='35' width='8' height='6' fill='white'/><rect x='60' y='25' width='8' height='6' fill='white'/></svg>" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .truck-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            font-weight: 300;
+        }
+
+        .alert {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .alert-icon {
+            background: rgba(255, 193, 7, 0.2);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .stat-title {
+            font-size: 0.95rem;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 8px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px 25px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-tab.active {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .nav-tab:not(.active) {
+            opacity: 0.7;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .search-filter {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            color: white;
+            font-size: 14px;
+        }
+
+        .search-input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+        .filter-select {
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            color: white;
+            font-size: 14px;
+            min-width: 180px;
+        }
+
+        .truck-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255,255,255,0.02);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .truck-table th {
+            background: rgba(255,255,255,0.05);
+            padding: 20px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .truck-table td {
+            padding: 20px 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .truck-table tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-delayed {
+            background: rgba(220, 53, 69, 0.2);
+            color: #ff6b7a;
+        }
+
+        .status-ontime {
+            background: rgba(40, 167, 69, 0.2);
+            color: #51cf66;
+        }
+
+        .status-transit {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffd43b;
+        }
+
+        .real-time-card {
+            background: rgba(255,255,255,0.02);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        .real-time-card:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .real-time-card.delayed {
+            border-left-color: #dc3545;
+        }
+
+        .real-time-card.ontime {
+            border-left-color: #28a745;
+        }
+
+        .real-time-card.transit {
+            border-left-color: #ffc107;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .card-date {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .card-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            opacity: 0.8;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            color: white;
+            font-size: 14px;
+        }
+
+        .form-input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .search-filter {
+                flex-direction: column;
+            }
+            
+            .truck-table {
+                font-size: 0.8rem;
+            }
+            
+            .truck-table th,
+            .truck-table td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <div class="truck-icon">🚛</div>
+                Sistema de Relatórios de Camiões
+            </h1>
+            <p class="subtitle">Monitorização e Gestão Automática de Frotas</p>
+        </div>
+
+
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Total de Camiões</span>
+                    <div class="stat-icon" style="background: rgba(74, 144, 226, 0.2);">🚛</div>
+                </div>
+                <div class="stat-number" id="totalTrucks">3</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Pontuais</span>
+                    <div class="stat-icon" style="background: rgba(40, 167, 69, 0.2);">⏰</div>
+                </div>
+                <div class="stat-number" id="onTimeTrucks">1</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Atrasados</span>
+                    <div class="stat-icon" style="background: rgba(220, 53, 69, 0.2);">⚠️</div>
+                </div>
+                <div class="stat-number" id="delayedTrucks">1</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Em Trânsito</span>
+                    <div class="stat-icon" style="background: rgba(255, 193, 7, 0.2);">📍</div>
+                </div>
+                <div class="stat-number" id="transitTrucks">1</div>
+            </div>
+        </div>
+
+        <div class="nav-tabs">
+            <div class="nav-tab active" onclick="switchTab('dashboard')">Dashboard</div>
+            <div class="nav-tab" onclick="switchTab('management')">Gestão de Camiões</div>
+            <div class="nav-tab" onclick="switchTab('reports')">Relatórios</div>
+        </div>
+
+        <div id="dashboard" class="tab-content active">
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <span>⏱️</span> Monitorização em Tempo Real
+                    </h2>
+                </div>
+                <div id="realTimeList">
+                    <div class="real-time-card delayed">
+                        <div class="card-header">
+                            <div class="card-title">12-AB-34</div>
+                            <div class="card-date">02/08/2025</div>
+                        </div>
+                        <div class="card-info">
+                            <span>🚛</span> João Silva
+                        </div>
+                        <div class="card-info">
+                            <span>📍</span> Lisboa → Porto
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span class="status-badge status-delayed">Atrasado 15min</span>
+                        </div>
+                    </div>
+                    <div class="real-time-card ontime">
+                        <div class="card-header">
+                            <div class="card-title">56-CD-78</div>
+                            <div class="card-date">02/08/2025</div>
+                        </div>
+                        <div class="card-info">
+                            <span>🚛</span> Maria Santos
+                        </div>
+                        <div class="card-info">
+                            <span>📍</span> Porto → Braga
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span class="status-badge status-ontime">Pontual</span>
+                        </div>
+                    </div>
+                    <div class="real-time-card transit">
+                        <div class="card-header">
+                            <div class="card-title">90-EF-12</div>
+                            <div class="card-date">02/08/2025</div>
+                        </div>
+                        <div class="card-info">
+                            <span>🚛</span> Carlos Oliveira
+                        </div>
+                        <div class="card-info">
+                            <span>📍</span> Coimbra → Aveiro
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span class="status-badge status-transit">Em Trânsito</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="management" class="tab-content">
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">Gestão de Camiões</h2>
+                    <button class="btn btn-primary" onclick="showAddTruckModal()">
+                        <span>➕</span> Adicionar Camião
+                    </button>
+                </div>
+                
+                <div class="search-filter">
+                    <input type="text" class="search-input" placeholder="Pesquisar por matrícula, motorista ou rota..." id="searchInput">
+                    <select class="filter-select" id="statusFilter">
+                        <option value="">Todos os Status</option>
+                        <option value="Pontual">Pontual</option>
+                        <option value="Atrasado">Atrasado</option>
+                        <option value="Em Trânsito">Em Trânsito</option>
+                    </select>
+                </div>
+
+                <table class="truck-table">
+                    <thead>
+                        <tr>
+                            <th>Matrícula</th>
+                            <th>Motorista</th>
+                            <th>Rota</th>
+                            <th>Partida</th>
+                            <th>Chegada Prev.</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trucksTableBody">
+                        <tr>
+                            <td><strong>12-AB-34</strong></td>
+                            <td>João Silva</td>
+                            <td>Lisboa → Porto</td>
+                            <td>08:00</td>
+                            <td>12:00</td>
+                            <td><span class="status-badge status-delayed">Atrasado 15min</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>56-CD-78</strong></td>
+                            <td>Maria Santos</td>
+                            <td>Porto → Braga</td>
+                            <td>09:30</td>
+                            <td>11:00</td>
+                            <td><span class="status-badge status-ontime">Pontual</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>90-EF-12</strong></td>
+                            <td>Carlos Oliveira</td>
+                            <td>Coimbra → Aveiro</td>
+                            <td>14:00</td>
+                            <td>16:30</td>
+                            <td><span class="status-badge status-transit">Em Trânsito</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="reports" class="tab-content">
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <span>📊</span> Relatórios de Atrasos
+                    </h2>
+                    <button class="btn btn-success" onclick="downloadPDF()">
+                        <span>⬇️</span> Baixar PDF
+                    </button>
+                </div>
+                
+                <table class="truck-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Matrícula</th>
+                            <th>Motorista</th>
+                            <th>Rota</th>
+                            <th>Partida</th>
+                            <th>Chegada Prev.</th>
+                            <th>Chegada Real</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>02/08/2025</td>
+                            <td>12-AB-34</td>
+                            <td>João Silva</td>
+                            <td>Lisboa → Porto</td>
+                            <td>08:00</td>
+                            <td>12:00</td>
+                            <td>12:15</td>
+                            <td><span class="status-badge status-delayed">Atrasado 15min</span></td>
+                        </tr>
+                        <tr>
+                            <td>02/08/2025</td>
+                            <td>56-CD-78</td>
+                            <td>Maria Santos</td>
+                            <td>Porto → Braga</td>
+                            <td>09:30</td>
+                            <td>11:00</td>
+                            <td>10:55</td>
+                            <td><span class="status-badge status-ontime">Pontual</span></td>
+                        </tr>
+                        <tr>
+                            <td>01/08/2025</td>
+                            <td>90-EF-12</td>
+                            <td>Carlos Oliveira</td>
+                            <td>Coimbra → Aveiro</td>
+                            <td>14:00</td>
+                            <td>16:30</td>
+                            <td>16:45</td>
+                            <td><span class="status-badge status-delayed">Atrasado 15min</span></td>
+                        </tr>
+                        <tr>
+                            <td>01/08/2025</td>
+                            <td>12-AB-34</td>
+                            <td>João Silva</td>
+                            <td>Porto → Lisboa</td>
+                            <td>15:00</td>
+                            <td>19:00</td>
+                            <td>18:50</td>
+                            <td><span class="status-badge status-ontime">Pontual</span></td>
+                        </tr>
+                        <tr>
+                            <td>31/07/2025</td>
+                            <td>56-CD-78</td>
+                            <td>Maria Santos</td>
+                            <td>Braga → Porto</td>
+                            <td>07:00</td>
+                            <td>08:30</td>
+                            <td>09:10</td>
+                            <td><span class="status-badge status-delayed">Atrasado 40min</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Adicionar Camião -->
+    <div id="addTruckModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Adicionar Novo Camião</h3>
+                <button class="close-btn" onclick="closeAddTruckModal()">&times;</button>
+            </div>
+            <form id="addTruckForm">
+                <div class="form-group">
+                    <label class="form-label">Matrícula</label>
+                    <input type="text" class="form-input" placeholder="Ex: 12-AB-34" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Motorista</label>
+                    <input type="text" class="form-input" placeholder="Nome do motorista" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Origem</label>
+                    <input type="text" class="form-input" placeholder="Cidade de origem" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Destino</label>
+                    <input type="text" class="form-input" placeholder="Cidade de destino" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hora de Partida</label>
+                    <input type="time" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hora de Chegada Prevista</label>
+                    <input type="time" class="form-input" required>
+                </div>
+                <div style="display: flex; gap: 15px; margin-top: 30px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Adicionar Camião</button>
+                    <button type="button" class="btn" onclick="closeAddTruckModal()" style="background: rgba(255,255,255,0.1); color: white; flex: 1;">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Dados simulados (em produção viria de uma base de dados)
+        let trucksData = [
+            {
+                id: 1,
+                plate: '12-AB-34',
+                driver: 'João Silva',
+                route: 'Lisboa → Porto',
+                departure: '08:00',
+                expectedArrival: '12:00',
+                actualArrival: '12:15',
+                status: 'Atrasado',
+                delay: 15,
+                date: '02/08/2025'
+            },
+            {
+                id: 2,
+                plate: '56-CD-78',
+                driver: 'Maria Santos',
+                route: 'Porto → Braga',
+                departure: '09:30',
+                expectedArrival: '11:00',
+                actualArrival: '10:55',
+                status: 'Pontual',
+                delay: 0,
+                date: '02/08/2025'
+            },
+            {
+                id: 3,
+                plate: '90-EF-12',
+                driver: 'Carlos Oliveira',
+                route: 'Coimbra → Aveiro',
+                departure: '14:00',
+                expectedArrival: '16:30',
+                actualArrival: null,
+                status: 'Em Trânsito',
+                delay: 0,
+                date: '02/08/2025'
+            }
+        ];
+
+        // Função para alternar entre abas
+        function switchTab(tabName) {
+            // Esconder todas as abas
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remover classe active de todos os botões
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Mostrar aba selecionada
+            document.getElementById(tabName).classList.add('active');
+            
+            // Adicionar classe active ao botão clicado
+            event.target.classList.add('active');
+        }
+
+        // Função para mostrar modal de adicionar camião
+        function showAddTruckModal() {
+            document.getElementById('addTruckModal').classList.add('show');
+        }
+
+        // Função para fechar modal
+        function closeAddTruckModal() {
+            document.getElementById('addTruckModal').classList.remove('show');
+        }
+
+        // Função para adicionar novo camião
+        document.getElementById('addTruckForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const newTruck = {
+                id: trucksData.length + 1,
+                plate: formData.get('plate'),
+                driver: formData.get('driver'),
+                route: formData.get('origin') + ' → ' + formData.get('destination'),
+                departure: formData.get('departure'),
+                expectedArrival: formData.get('expectedArrival'),
+                actualArrival: null,
+                status: 'Em Trânsito',
+                delay: 0,
+                date: new Date().toLocaleDateString('pt-PT')
+            };
+            
+            trucksData.push(newTruck);
+            updateTrucksTable();
+            updateStats();
+            closeAddTruckModal();
+            e.target.reset();
+        });
+
+        // Função para atualizar estatísticas
+        function updateStats() {
+            const total = trucksData.length;
+            const onTime = trucksData.filter(truck => truck.status === 'Pontual').length;
+            const delayed = trucksData.filter(truck => truck.status === 'Atrasado').length;
+            const transit = trucksData.filter(truck => truck.status === 'Em Trânsito').length;
+            
+            document.getElementById('totalTrucks').textContent = total;
+            document.getElementById('onTimeTrucks').textContent = onTime;
+            document.getElementById('delayedTrucks').textContent = delayed;
+            document.getElementById('transitTrucks').textContent = transit;
+        }
+
+        // Função para atualizar tabela de camiões
+        function updateTrucksTable() {
+            const tbody = document.getElementById('trucksTableBody');
+            tbody.innerHTML = '';
+            
+            trucksData.forEach(truck => {
+                const row = document.createElement('tr');
+                const statusClass = truck.status === 'Pontual' ? 'status-ontime' : 
+                                   truck.status === 'Atrasado' ? 'status-delayed' : 'status-transit';
+                const statusText = truck.status === 'Atrasado' ? `Atrasado ${truck.delay}min` : truck.status;
+                
+                row.innerHTML = `
+                    <td><strong>${truck.plate}</strong></td>
+                    <td>${truck.driver}</td>
+                    <td>${truck.route}</td>
+                    <td>${truck.departure}</td>
+                    <td>${truck.expectedArrival}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Função para filtrar e pesquisar camiões
+        function filterTrucks() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            const filteredTrucks = trucksData.filter(truck => {
+                const matchesSearch = truck.plate.toLowerCase().includes(searchTerm) ||
+                                    truck.driver.toLowerCase().includes(searchTerm) ||
+                                    truck.route.toLowerCase().includes(searchTerm);
+                
+                const matchesStatus = !statusFilter || truck.status === statusFilter;
+                
+                return matchesSearch && matchesStatus;
+            });
+            
+            // Atualizar tabela com dados filtrados
+            const tbody = document.getElementById('trucksTableBody');
+            tbody.innerHTML = '';
+            
+            filteredTrucks.forEach(truck => {
+                const row = document.createElement('tr');
+                const statusClass = truck.status === 'Pontual' ? 'status-ontime' : 
+                                   truck.status === 'Atrasado' ? 'status-delayed' : 'status-transit';
+                const statusText = truck.status === 'Atrasado' ? `Atrasado ${truck.delay}min` : truck.status;
+                
+                row.innerHTML = `
+                    <td><strong>${truck.plate}</strong></td>
+                    <td>${truck.driver}</td>
+                    <td>${truck.route}</td>
+                    <td>${truck.departure}</td>
+                    <td>${truck.expectedArrival}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Event listeners para pesquisa e filtros
+        document.getElementById('searchInput').addEventListener('input', filterTrucks);
+        document.getElementById('statusFilter').addEventListener('change', filterTrucks);
+
+        // Função para gerar e baixar PDF
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Configuração do PDF
+            doc.setFont('helvetica');
+            
+            // Cabeçalho
+            doc.setFontSize(20);
+            doc.setTextColor(30, 60, 114);
+            doc.text('Sistema de Relatórios de Camiões', 20, 25);
+            
+            doc.setFontSize(14);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Relatório de Atrasos e Monitorização de Frota', 20, 35);
+            
+            // Data de geração
+            doc.setFontSize(10);
+            doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-PT')} às ${new Date().toLocaleTimeString('pt-PT')}`, 20, 45);
+            
+            // Linha divisória
+            doc.setDrawColor(30, 60, 114);
+            doc.line(20, 50, 190, 50);
+            
+            // Estatísticas
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text('Resumo Estatístico:', 20, 65);
+            
+            doc.setFontSize(11);
+            const stats = [
+                `Total de Camiões: ${trucksData.length}`,
+                `Pontuais: ${trucksData.filter(t => t.status === 'Pontual').length}`,
+                `Atrasados: ${trucksData.filter(t => t.status === 'Atrasado').length}`,
+                `Em Trânsito: ${trucksData.filter(t => t.status === 'Em Trânsito').length}`
+            ];
+            
+            stats.forEach((stat, index) => {
+                doc.text(stat, 25, 75 + (index * 8));
+            });
+            
+            // Tabela de relatórios
+            doc.setFontSize(14);
+            doc.text('Relatório Detalhado de Viagens:', 20, 115);
+            
+            // Cabeçalhos da tabela
+            doc.setFontSize(9);
+            doc.setTextColor(60, 60, 60);
+            
+            const headers = ['Data', 'Matrícula', 'Motorista', 'Rota', 'Partida', 'Prev.', 'Real', 'Status'];
+            const colWidths = [25, 25, 30, 35, 20, 18, 18, 25];
+            let xPos = 20;
+            
+            headers.forEach((header, index) => {
+                doc.text(header, xPos, 125);
+                xPos += colWidths[index];
+            });
+            
+            // Linha sob cabeçalhos
+            doc.line(20, 128, 190, 128);
+            
+            // Dados da tabela
+            doc.setTextColor(0, 0, 0);
+            let yPos = 138;
+            
+            // Dados históricos expandidos para o relatório
+            const reportData = [
+                { date: '02/08/2025', plate: '12-AB-34', driver: 'João Silva', route: 'Lisboa → Porto', departure: '08:00', expected: '12:00', actual: '12:15', status: 'Atrasado 15min' },
+                { date: '02/08/2025', plate: '56-CD-78', driver: 'Maria Santos', route: 'Porto → Braga', departure: '09:30', expected: '11:00', actual: '10:55', status: 'Pontual' },
+                { date: '01/08/2025', plate: '90-EF-12', driver: 'Carlos Oliveira', route: 'Coimbra → Aveiro', departure: '14:00', expected: '16:30', actual: '16:45', status: 'Atrasado 15min' },
+                { date: '01/08/2025', plate: '12-AB-34', driver: 'João Silva', route: 'Porto → Lisboa', departure: '15:00', expected: '19:00', actual: '18:50', status: 'Pontual' },
+                { date: '31/07/2025', plate: '56-CD-78', driver: 'Maria Santos', route: 'Braga → Porto', departure: '07:00', expected: '08:30', actual: '09:10', status: 'Atrasado 40min' },
+                { date: '31/07/2025', plate: '90-EF-12', driver: 'Carlos Oliveira', route: 'Aveiro → Coimbra', departure: '10:15', expected: '12:45', actual: '12:30', status: 'Pontual' },
+                { date: '30/07/2025', plate: '12-AB-34', driver: 'João Silva', route: 'Lisboa → Faro', departure: '06:00', expected: '09:30', actual: '10:00', status: 'Atrasado 30min' }
+            ];
+            
+            reportData.forEach((row, index) => {
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 30;
+                    
+                    // Replicar cabeçalhos na nova página
+                    doc.setFontSize(9);
+                    doc.setTextColor(60, 60, 60);
+                    xPos = 20;
+                    headers.forEach((header, index) => {
+                        doc.text(header, xPos, yPos);
+                        xPos += colWidths[index];
+                    });
+                    doc.line(20, yPos + 3, 190, yPos + 3);
+                    yPos += 13;
+                    doc.setTextColor(0, 0, 0);
+                }
+                
+                const rowData = [row.date, row.plate, row.driver, row.route, row.departure, row.expected, row.actual, row.status];
+                xPos = 20;
+                
+                rowData.forEach((data, colIndex) => {
+                    let text = data;
+                    if (colIndex === 3 && text.length > 15) { // Rota
+                        text = text.substring(0, 12) + '...';
+                    } else if (colIndex === 2 && text.length > 12) { // Motorista
+                        text = text.substring(0, 9) + '...';
+                    }
+                    
+                    doc.text(text, xPos, yPos);
+                    xPos += colWidths[colIndex];
+                });
+                
+                // Colorir linha se atrasado
+                if (row.status.includes('Atrasado')) {
+                    doc.setDrawColor(220, 53, 69);
+                    doc.setFillColor(220, 53, 69, 0.1);
+                    doc.rect(18, yPos - 5, 174, 8, 'F');
+                }
+                
+                yPos += 10;
+            });
+            
+            // Rodapé
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(120, 120, 120);
+                doc.text(`Sistema de Relatórios de Camiões - Página ${i} de ${pageCount}`, 20, 287);
+                doc.text(`Gerado automaticamente em ${new Date().toLocaleDateString('pt-PT')}`, 140, 287);
+            }
+            
+            // Salvar PDF
+            const fileName = `relatorio-camioes-${new Date().toLocaleDateString('pt-PT').replace(/\//g, '-')}.pdf`;
+            doc.save(fileName);
+        }
+
+        // Função para simular atualizações em tempo real
+        function simulateRealTimeUpdates() {
+            setInterval(() => {
+                // Simular mudanças de status aleatórias
+                const randomIndex = Math.floor(Math.random() * trucksData.length);
+                const truck = trucksData[randomIndex];
+                
+                if (truck.status === 'Em Trânsito') {
+                    const shouldDelay = Math.random() < 0.3; // 30% chance de atraso
+                    if (shouldDelay) {
+                        truck.status = 'Atrasado';
+                        truck.delay = Math.floor(Math.random() * 45) + 5; // 5-50 minutos
+                        truck.actualArrival = addMinutesToTime(truck.expectedArrival, truck.delay);
+                    } else {
+                        truck.status = 'Pontual';
+                        truck.actualArrival = addMinutesToTime(truck.expectedArrival, -Math.floor(Math.random() * 10));
+                    }
+                    
+                    updateStats();
+                    updateTrucksTable();
+                    updateRealTimeDisplay();
+                }
+            }, 30000); // Atualizar a cada 30 segundos
+        }
+
+        // Função auxiliar para adicionar minutos a uma hora
+        function addMinutesToTime(time, minutes) {
+            const [hours, mins] = time.split(':').map(Number);
+            const date = new Date();
+            date.setHours(hours, mins + minutes);
+            return date.toTimeString().substr(0, 5);
+        }
+
+        // Função para atualizar display em tempo real
+        function updateRealTimeDisplay() {
+            const realTimeList = document.getElementById('realTimeList');
+            realTimeList.innerHTML = '';
+            
+            trucksData.forEach(truck => {
+                const cardClass = truck.status === 'Pontual' ? 'ontime' : 
+                                 truck.status === 'Atrasado' ? 'delayed' : 'transit';
+                const statusClass = truck.status === 'Pontual' ? 'status-ontime' : 
+                                   truck.status === 'Atrasado' ? 'status-delayed' : 'status-transit';
+                const statusText = truck.status === 'Atrasado' ? `Atrasado ${truck.delay}min` : truck.status;
+                
+                const card = document.createElement('div');
+                card.className = `real-time-card ${cardClass}`;
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="card-title">${truck.plate}</div>
+                        <div class="card-date">${truck.date}</div>
+                    </div>
+                    <div class="card-info">
+                        <span>🚛</span> ${truck.driver}
+                    </div>
+                    <div class="card-info">
+                        <span>📍</span> ${truck.route}
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
+                `;
+                realTimeList.appendChild(card);
+            });
+        }
+
+        // Fechar modal clicando fora dele
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('addTruckModal');
+            if (event.target === modal) {
+                closeAddTruckModal();
+            }
+        });
+
+        // Inicializar aplicação
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+            updateTrucksTable();
+            updateRealTimeDisplay();
+            simulateRealTimeUpdates();
+        });
+
+        // Função para atualizar hora atual no sistema
+        function updateCurrentTime() {
+            setInterval(() => {
+                const now = new Date();
+                console.log(`Sistema ativo: ${now.toLocaleString('pt-PT')}`);
+            }, 60000); // A cada minuto
+        }
+
+        updateCurrentTime();
+    </script>
+</body>
+</html>
